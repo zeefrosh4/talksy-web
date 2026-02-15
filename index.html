@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Talksy Mini</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to right, #ffecd2, #fcb69f);
+            padding: 20px;
+            margin: 0;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        input {
+            padding: 12px;
+            width: 65%;
+            border-radius: 8px;
+            border: none;
+            outline: none;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .post {
+            background: white;
+            padding: 12px;
+            margin-top: 12px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            position: relative;
+            transition: transform 0.2s ease;
+        }
+
+        .post:hover {
+            transform: translateY(-2px);
+        }
+
+        .likeBtn {
+            background: #ff4b5c;
+            color: white;
+            margin-right: 6px;
+        }
+
+        .likeBtn:hover {
+            opacity: 0.8;
+        }
+
+        .deleteBtn {
+            background: #555;
+            color: white;
+        }
+
+        .deleteBtn:hover {
+            opacity: 0.8;
+        }
+
+        .likeCount {
+            font-weight: bold;
+            margin-left: 4px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Talksy Mini</h1>
+
+    <!-- Username input -->
+    <input type="text" id="usernameInput" placeholder="Your name (optional)">
+    <br>
+
+    <!-- Message input -->
+    <input type="text" id="messageInput" placeholder="What's on your mind?">
+    <button onclick="addPost()">Post</button>
+
+    <!-- Posts container -->
+    <div id="posts"></div>
+
+    <script>
+        function addPost() {
+            let message = document.getElementById("messageInput").value;
+            let username = document.getElementById("usernameInput").value || "Anonymous";
+
+            if (message === "") {
+                alert("Write something first!");
+                return;
+            }
+
+            let postDiv = document.createElement("div");
+            postDiv.className = "post";
+
+            let now = new Date();
+            let time = now.toLocaleTimeString();
+
+            postDiv.innerHTML = `
+                <p><strong>${username}:</strong> ${message}</p>
+                <small style="color: gray;">Posted at ${time}</small>
+                <br>
+                <button class="likeBtn">Like ❤️</button>
+                <button class="deleteBtn">Delete ❌</button>
+                <span class="likeCount">0</span> Likes
+            `;
+
+            document.getElementById("posts").appendChild(postDiv);
+            document.getElementById("messageInput").value = "";
+
+            // Delete functionality
+            postDiv.querySelector(".deleteBtn").addEventListener("click", function() {
+                postDiv.remove();
+            });
+
+            // Like functionality
+            let likeBtn = postDiv.querySelector(".likeBtn");
+            let likeCount = postDiv.querySelector(".likeCount");
+            likeBtn.addEventListener("click", function() {
+                likeCount.innerText = parseInt(likeCount.innerText) + 1;
+            });
+        }
+
+        // Enter key functionality
+        window.onload = function() {
+            document.getElementById("messageInput").addEventListener("keypress", function(event) {
+                if (event.key === "Enter") {
+                    addPost();
+                }
+            });
+        };
+    </script>
+
+</body>
+  </html>
