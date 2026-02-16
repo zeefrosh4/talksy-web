@@ -17,7 +17,7 @@
 
         input {
             padding: 12px;
-            width: 65%;
+            width: 60%;
             border-radius: 8px;
             border: none;
             outline: none;
@@ -63,34 +63,17 @@
             100% {opacity: 1; transform: scale(1);}
         }
 
-        .likeBtn {
-            background: #ff4b5c;
-            color: white;
-            margin-right: 6px;
-        }
+        .likeBtn { background: #ff4b5c; color: white; margin-right: 6px; }
+        .likeBtn:hover { opacity: 0.8; }
+        .likeBtn:active { transform: scale(1.2); transition: transform 0.2s; }
 
-        .likeBtn:hover {
-            opacity: 0.8;
-        }
+        .deleteBtn { background: #555; color: white; }
+        .deleteBtn:hover { opacity: 0.8; }
 
-        .likeBtn:active {
-            transform: scale(1.2);
-            transition: transform 0.2s;
-        }
+        .emojiBtn { background: none; border: none; font-size: 18px; cursor: pointer; margin-left: 4px; }
+        .emojiBtn:hover { transform: scale(1.2); }
 
-        .deleteBtn {
-            background: #555;
-            color: white;
-        }
-
-        .deleteBtn:hover {
-            opacity: 0.8;
-        }
-
-        .likeCount {
-            font-weight: bold;
-            margin-left: 4px;
-        }
+        .likeCount, .reactionCount { font-weight: bold; margin-left: 4px; }
     </style>
 </head>
 <body>
@@ -106,98 +89,108 @@
 
 <!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
   const firebaseConfig = {
     apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
     authDomain: "talksy-mini.firebaseapp.com",
     projectId: "talksy-mini",
-    storageBucket: "talksy-mini.firebasestorage.app",
+    storageBucket: "talksy-mini.appspot.com",
     messagingSenderId: "1044754891732",
-    appId: "1:1044754891732:web:9b933f3d18a17e246a8c41",
-    databaseURL: "https://talksy-mini-default-rtdb.firebaseio.com/"
+    appId: "1:1044754891732:web:9b933f3d18a17e246a8c41"
   };
 
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.database();
+  const db = firebase.firestore();
   const postsDiv = document.getElementById("posts");
 
-  const colors = ['#FF6B6B','#6BCB77','#4D96FF','#FFD93D','#FF8C42','#9D4EDD'];
+  // Generate fixed color for username
+  function hashColor(name){
+    let colors = ['#FF6B6B','#6BCB77','#4D96FF','#FFD93D','#FF8C42','#9D4EDD'];
+    let hash = 0;
+    for(let i=0;i<name.length;i++){ hash = name.charCodeAt(i) + ((hash<<5)-hash);}
+    return colors[Math.abs(hash) % colors.length];
+  }
 
   function sendMessage() {
     const username = document.getElementById("usernameInput").value.trim() || "Anonymous";
     const message = document.getElementById("messageInput").value.trim();
     if(!message) return alert("Write something first!");
 
-    const newPostRef = db.ref("posts").push();
-    newPostRef.set({
+    db.collection("posts").add({
       username: username,
       message: message,
       timestamp: Date.now(),
-      likes: 0
+      likes: 0,
+      reactions: { "❤️": 0, "😂": 0, "😮": 0 }
     });
 
     document.getElementById("messageInput").value = "";
   }
 
-  db.ref("posts").on("value", snapshot => {
-    postsDiv.innerHTML = "";
-    const posts = snapshot.val();
-    const myName = document.getElementById("usernameInput").value.trim() || "Anonymous";
+  db.collection("posts").orderBy("timestamp")
+    .onSnapshot(snapshot => {
+      postsDiv.innerHTML = "";
+      const myName = document.getElementById("usernameInput").value.trim() || "Anonymous";
 
-    if(posts){
-      Object.keys(posts).forEach(key => {
-        const post = posts[key];
+      snapshot.forEach(doc => {
+        const post = doc.data();
         const postDiv = document.createElement("div");
-
-        // Align right if it's your post
         postDiv.className = (post.username === myName) ? "post right" : "post left";
 
-        // Format time HH:MM
         const time = new Date(post.timestamp);
-        const hours = time.getHours().toString().padStart(2,'0');
-        const minutes = time.getMinutes().toString().padStart(2,'0');
-        const formattedTime = `${hours}:${minutes}`;
+        const formattedTime = `${time.getHours().toString().padStart(2,'0')}:${time.getMinutes().toString().padStart(2,'0')}`;
 
-        // Random username color
-        const usernameColor = colors[Math.floor(Math.random()*colors.length)];
+        const userColor = hashColor(post.username);
 
         postDiv.innerHTML = `
-          <p><strong style="color:${usernameColor}">${post.username}:</strong> ${post.message}</p>
+          <p><strong style="color:${userColor}">${post.username}:</strong> ${post.message}</p>
           <small style="color: gray;">Posted at ${formattedTime}</small>
           <br>
           <button class="likeBtn">Like ❤️</button>
+          <span class="likeCount">${post.likes}</span>
           <button class="deleteBtn">Delete ❌</button>
-          <span class="likeCount">${post.likes}</span> Likes
+          <span>Reactions: </span>
+          <button class="emojiBtn">❤️ ${post.reactions["❤️"]}</button>
+          <button class="emojiBtn">😂 ${post.reactions["😂"]}</button>
+          <button class="emojiBtn">😮 ${post.reactions["😮"]}</button>
         `;
 
         postsDiv.appendChild(postDiv);
 
         // Like button
         const likeBtn = postDiv.querySelector(".likeBtn");
-        const likeCount = postDiv.querySelector(".likeCount");
         likeBtn.addEventListener("click", () => {
-          db.ref("posts/" + key + "/likes").set(post.likes + 1);
+          db.collection("posts").doc(doc.id).update({ likes: post.likes + 1 });
         });
 
         // Delete button
         const deleteBtn = postDiv.querySelector(".deleteBtn");
         deleteBtn.addEventListener("click", () => {
-          db.ref("posts/" + key).remove();
+          db.collection("posts").doc(doc.id).delete();
         });
+
+        // Emoji reactions
+        const emojiBtns = postDiv.querySelectorAll(".emojiBtn");
+        emojiBtns.forEach(btn => {
+          btn.addEventListener("click", () => {
+            const emoji = btn.textContent.trim().split(" ")[0];
+            const current = post.reactions[emoji] || 0;
+            const updated = { ...post.reactions };
+            updated[emoji] = current + 1;
+            db.collection("posts").doc(doc.id).update({ reactions: updated });
+          });
+        });
+
       });
 
-      // Auto-scroll to newest post
       postsDiv.scrollTop = postsDiv.scrollHeight;
-    }
-  });
+    });
 
-  // Enter key to post
   document.getElementById("messageInput").addEventListener("keypress", function(event) {
     if(event.key === "Enter") sendMessage();
   });
 </script>
-
 </body>
 </html>
