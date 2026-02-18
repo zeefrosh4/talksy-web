@@ -4,7 +4,7 @@
   <title>Talksy Mini Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin:0; font-family: 'Segoe UI', Arial; background:#FFF3E6; }
+    body { margin:0; font-family:'Segoe UI', Arial; background:#FFF3E6; }
     h1 { text-align:center; background:#FF6F61; color:white; padding:15px; margin:0; font-size:22px; }
 
     /* Auth */
@@ -128,6 +128,7 @@ function signUp(){ const email=document.getElementById("email").value; const pas
 function login(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value; auth.signInWithEmailAndPassword(email,password).catch(e=>alert(e.message)); }
 function logout(){ auth.signOut(); currentChatId=null; currentChatType=null; }
 
+// AUTH STATE
 auth.onAuthStateChanged(user=>{
   if(user){
     authBox.style.display="none";
@@ -145,26 +146,30 @@ function startPrivateChat(){
   const friendEmail=document.getElementById("friendEmail").value.trim().toLowerCase();
   if(!friendEmail) return alert("Enter friend's email!");
   const users=[user.email,friendEmail].sort();
-  currentChatId=btoa(users.join("_"));
-  currentChatType="private";
-  openChat(currentChatId,currentChatType,"Private: "+friendEmail.split("@")[0]);
+  const chatId=btoa(users.join("_"));
+
+  db.collection("private_chats").doc(chatId).set({ users }, { merge:true }).then(()=>{
+    currentChatId = chatId;
+    currentChatType = "private";
+    openChat(currentChatId, currentChatType, "Private: " + friendEmail.split("@")[0]);
+  });
 }
 
 // GROUP
 function createGroup(){
-  const groupName = document.getElementById("groupName").value.trim();
+  const groupName=document.getElementById("groupName").value.trim();
   if(!groupName) return alert("Enter group name");
 
   db.collection("group_chats").add({
-    name: groupName,
-    members: [auth.currentUser.uid]
-  }).then(docRef => {
+    name:groupName,
+    members:[auth.currentUser.uid]
+  }).then(docRef=>{
     currentChatId = docRef.id;
     currentChatType = "group";
-    openChat(currentChatId,currentChatType,groupName);
+    openChat(currentChatId, currentChatType, groupName);
   });
 
-  document.getElementById("groupName").value = "";
+  document.getElementById("groupName").value="";
 }
 
 // BACK
@@ -181,58 +186,35 @@ function openChat(chatId,type,title){
   chatSelection.style.display="none";
   chatTitle.innerText=title;
   postsDiv.innerHTML="";
-  if(type==="private") loadMessages("private",chatId);
-  else loadMessages("group",chatId);
+  loadMessages(type,chatId);
 }
 
 // SEND MESSAGE
-function sendMessage() {
-  const user = auth.currentUser;
-  const message = document.getElementById("messageInput").value.trim();
-  if (!message) return;
+function sendMessage(){
+  const user=auth.currentUser;
+  const message=document.getElementById("messageInput").value.trim();
+  if(!message) return;
+  if(!currentChatId || !currentChatType) return alert("Select a chat first!");
 
-  // Ensure a chat is selected
-  if (!currentChatId || !currentChatType) {
-    alert("Select a chat first!");
-    return;
-  }
-
-  // Choose the right collection
   let collectionRef;
-  if (currentChatType === "private") {
-    collectionRef = db
-      .collection("private_chats")
-      .doc(currentChatId)
-      .collection("messages");
-  } else if (currentChatType === "group") {
-    collectionRef = db
-      .collection("group_chats")
-      .doc(currentChatId)
-      .collection("messages");
-  } else {
-    alert("Error: Chat type unknown!");
-    return;
-  }
+  if(currentChatType==="private") collectionRef=db.collection("private_chats").doc(currentChatId).collection("messages");
+  else collectionRef=db.collection("group_chats").doc(currentChatId).collection("messages");
 
   collectionRef.add({
-    uid: user.uid,
-    email: user.email,
-    message: message,
-    timestamp: Date.now(),
-    likes: 0,
-    reactions: { "❤️": 0, "😂": 0, "😮": 0 }
-  }).then(() => {
-    document.getElementById("messageInput").value = "";
-  }).catch(err => {
-    console.error("Failed to send message:", err);
-  });
+    uid:user.uid,
+    email:user.email,
+    message:message,
+    timestamp:Date.now(),
+    likes:0,
+    reactions:{"❤️":0,"😂":0,"😮":0}
+  }).then(()=>{ document.getElementById("messageInput").value=""; });
 }
 
 // LOAD MESSAGES
 function loadMessages(type,id){
   const user=auth.currentUser;
-  const collectionRef=type==="private"? db.collection("private_chats").doc(id).collection("messages") :
-    db.collection("group_chats").doc(id).collection("messages");
+  let collectionRef=type==="private"? db.collection("private_chats").doc(id).collection("messages") :
+                                           db.collection("group_chats").doc(id).collection("messages");
 
   collectionRef.orderBy("timestamp").onSnapshot(snapshot=>{
     postsDiv.innerHTML="";
@@ -259,6 +241,7 @@ function loadMessages(type,id){
       postsDiv.appendChild(bubble);
       postsDiv.scrollTop=postsDiv.scrollHeight;
 
+      // Like & Emoji
       bubble.querySelector(".likeBtn").addEventListener("click",()=>collectionRef.doc(doc.id).update({likes:post.likes+1}));
       bubble.querySelectorAll(".emojiBtn").forEach(btn=>{
         btn.addEventListener("click",()=>{
@@ -312,4 +295,4 @@ document.getElementById("messageInput").addEventListener("keypress",e=>{
 </script>
 
 </body>
-</html>
+      </html>
