@@ -174,10 +174,11 @@ function loadMessages(user) {
         const postDiv = document.createElement("div");
         postDiv.className = "post";
 
-        postDiv.innerHTML = `
-          <strong>${post.email}</strong><br>
-          ${post.message}
-        `;
+        const displayName = post.email.split('@')[0]; // Take only the part before @
+postDiv.innerHTML = `
+  <strong>${displayName}</strong><br>
+  ${post.message}
+`;
 
         // Only show delete if owner
         if (post.uid === user.uid) {
