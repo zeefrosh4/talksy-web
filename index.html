@@ -1,48 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Talksy Mini WhatsApp Full UI</title>
+  <title>Talksy Mini Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { margin:0; font-family: Arial; background:#e5ddd5; }
-    h1 { text-align:center; background:#075E54; color:white; padding:15px; margin:0; }
-    
+    body { margin:0; font-family: 'Segoe UI', Arial; background:#FFF3E6; }
+    h1 { text-align:center; background:#FF6F61; color:white; padding:15px; margin:0; font-size:22px; }
+
     /* Auth */
     .auth-box { text-align:center; padding:20px; }
-    input { padding:10px; border-radius:20px; border:none; margin:5px; width:250px; }
-    button { padding:8px 14px; border-radius:20px; border:none; cursor:pointer; font-weight:bold; margin:3px; }
+    input { padding:12px; border-radius:25px; border:none; margin:5px; width:90%; max-width:300px; font-size:16px; }
+    button { padding:10px 16px; border-radius:25px; border:none; cursor:pointer; font-weight:bold; margin:5px; background:#FF914D; color:white; font-size:16px; }
+    button:hover { opacity:0.9; }
 
     /* Chat selection */
     .chat-selection { display:none; max-width:500px; margin:auto; padding:20px; }
-    .chatItem { display:flex; align-items:center; padding:8px; background:#fff; border-radius:10px; margin:5px 0; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
-    .chatItem:hover { background:#f1f1f1; }
-    .chatItem img { width:40px; height:40px; border-radius:50%; margin-right:10px; }
-    .chatItem .name { font-weight:bold; flex:1; }
-    .online-dot { width:10px; height:10px; background:#4CAF50; border-radius:50%; margin-left:5px; }
-    
+    .chatItem { display:flex; align-items:center; padding:12px; background:#FFF9F2; border-radius:15px; margin:8px 0; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.2); transition:0.2s; }
+    .chatItem:hover { background:#FFE6CC; }
+    .chatItem img { width:50px; height:50px; border-radius:50%; margin-right:12px; border:2px solid #FF914D; }
+    .chatItem .name { font-weight:bold; flex:1; font-size:16px; }
+    .online-dot { width:12px; height:12px; background:#4CAF50; border-radius:50%; margin-left:5px; }
+
     /* Chat box */
-    .chat-box { display:none; max-width:600px; margin:auto; }
-    .chat-header { background:#075E54; color:white; padding:10px; display:flex; align-items:center; border-radius:0 0 15px 15px; }
-    .chat-header img { width:40px; height:40px; border-radius:50%; margin-right:10px; }
-    .chat-header .title { flex:1; font-weight:bold; }
-    .messages { background:#ece5dd; height:400px; overflow-y:auto; padding:10px; }
-    .bubble { padding:10px; border-radius:15px; margin:5px 0; max-width:70%; position:relative; display:inline-block; word-wrap:break-word; }
-    .bubble.you { background:#dcf8c6; margin-left:auto; text-align:right; }
-    .bubble.friend { background:#fff; margin-right:auto; text-align:left; }
+    .chat-box { display:none; max-width:600px; margin:auto; height:80vh; display:flex; flex-direction:column; }
+    .chat-header { background:#FF6F61; color:white; padding:12px; display:flex; align-items:center; border-radius:0 0 15px 15px; flex-shrink:0; }
+    .chat-header img { width:45px; height:45px; border-radius:50%; margin-right:12px; border:2px solid #FFF; }
+    .chat-header .title { flex:1; font-weight:bold; font-size:16px; }
+
+    .messages { background:#FFF9F2; flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; scroll-behavior:smooth; }
+    .bubble { padding:10px 14px; border-radius:18px; margin:5px 0; max-width:75%; word-wrap:break-word; position:relative; display:inline-block; font-size:15px; }
+    .bubble.you { background:#FFD9B3; align-self:flex-end; text-align:right; }
+    .bubble.friend { background:#FFFFFF; align-self:flex-start; text-align:left; }
     .timestamp { font-size:10px; color:gray; display:block; margin-top:5px; }
+
     .emojiBtn { background:none; border:none; font-size:16px; cursor:pointer; margin-left:4px; }
     .emojiBtn:hover { transform:scale(1.2); }
-    .likeBtn { background:#34b7f1; color:white; border-radius:15px; padding:3px 8px; margin-left:4px; font-size:12px; }
-    .deleteBtn { background:#ff4b5c; color:white; border-radius:15px; padding:3px 8px; margin-left:4px; font-size:12px; }
+    .likeBtn { background:#FF914D; color:white; border-radius:15px; padding:4px 10px; margin-left:4px; font-size:12px; }
+    .deleteBtn { background:#FF3B3B; color:white; border-radius:15px; padding:4px 10px; margin-left:4px; font-size:12px; }
 
     /* Input box */
-    .input-box { display:flex; margin-top:10px; }
-    .input-box input { flex:1; padding:10px; border-radius:20px; border:none; }
-    .input-box button { margin-left:5px; }
+    .input-box { display:flex; margin-top:10px; padding:10px; background:#FFF3E6; border-top:1px solid #FFC49B; flex-shrink:0; }
+    .input-box input { flex:1; padding:12px; border-radius:25px; border:none; font-size:16px; }
+    .input-box button { margin-left:5px; padding:12px 16px; font-size:16px; border-radius:25px; }
+
+    @media screen and (max-width:480px){
+      .chat-box { max-width:100%; height:90vh; }
+      .bubble { font-size:14px; max-width:80%; }
+      h1 { font-size:20px; }
+    }
   </style>
 </head>
 <body>
 
-<h1>Talksy Mini WhatsApp</h1>
+<h1>Talksy Mini Chat</h1>
 
 <div class="auth-box" id="authBox">
   <input type="email" id="email" placeholder="Email"><br>
@@ -70,7 +80,7 @@
 
 <div class="chat-box" id="chatBox">
   <div class="chat-header">
-    <img src="https://i.pravatar.cc/40" alt="avatar">
+    <img src="https://i.pravatar.cc/45" alt="avatar">
     <div class="title" id="chatTitle"></div>
   </div>
   <div class="messages" id="posts"></div>
@@ -142,10 +152,19 @@ function startPrivateChat(){
 
 // GROUP
 function createGroup(){
-  const groupName=document.getElementById("groupName").value.trim();
+  const groupName = document.getElementById("groupName").value.trim();
   if(!groupName) return alert("Enter group name");
-  db.collection("group_chats").add({name:groupName, members:[auth.currentUser.uid]});
-  document.getElementById("groupName").value="";
+
+  db.collection("group_chats").add({
+    name: groupName,
+    members: [auth.currentUser.uid]
+  }).then(docRef => {
+    currentChatId = docRef.id;
+    currentChatType = "group";
+    openChat(currentChatId,currentChatType,groupName);
+  });
+
+  document.getElementById("groupName").value = "";
 }
 
 // BACK
@@ -158,7 +177,7 @@ function backToSelection(){
 
 // OPEN CHAT
 function openChat(chatId,type,title){
-  chatBox.style.display="block";
+  chatBox.style.display="flex";
   chatSelection.style.display="none";
   chatTitle.innerText=title;
   postsDiv.innerHTML="";
@@ -218,9 +237,7 @@ function loadMessages(type,id){
       postsDiv.appendChild(bubble);
       postsDiv.scrollTop=postsDiv.scrollHeight;
 
-      // Like
       bubble.querySelector(".likeBtn").addEventListener("click",()=>collectionRef.doc(doc.id).update({likes:post.likes+1}));
-      // Emoji
       bubble.querySelectorAll(".emojiBtn").forEach(btn=>{
         btn.addEventListener("click",()=>{
           const emoji=btn.textContent.trim().split(" ")[0];
@@ -241,7 +258,7 @@ function loadGroupList(){
       const group=doc.data();
       const div=document.createElement("div");
       div.className="chatItem";
-      div.innerHTML=`<img src="https://i.pravatar.cc/40?u=${doc.id}"><span class="name">${group.name}</span>`;
+      div.innerHTML=`<img src="https://i.pravatar.cc/50?u=${doc.id}"><span class="name">${group.name}</span>`;
       div.onclick=()=>openChat(doc.id,"group",group.name);
       groupList.appendChild(div);
     });
@@ -259,7 +276,7 @@ function loadPrivateList(){
       if(friendEmail){
         const div=document.createElement("div");
         div.className="chatItem";
-        div.innerHTML=`<img src="https://i.pravatar.cc/40?u=${friendEmail}"><span class="name">${friendEmail.split("@")[0]}</span>`;
+        div.innerHTML=`<img src="https://i.pravatar.cc/50?u=${friendEmail}"><span class="name">${friendEmail.split("@")[0]}</span>`;
         div.onclick=()=>openChat(doc.id,"private","Private: "+friendEmail.split("@")[0]);
         privateList.appendChild(div);
       }
@@ -271,5 +288,6 @@ document.getElementById("messageInput").addEventListener("keypress",e=>{
   if(e.key==="Enter") sendMessage();
 });
 </script>
+
 </body>
 </html>
