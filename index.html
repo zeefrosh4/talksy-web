@@ -7,22 +7,12 @@
     body { margin:0; font-family:'Segoe UI', Arial; background:#FFF3E6; }
     h1 { text-align:center; background:#FF6F61; color:white; padding:15px; margin:0; font-size:22px; }
 
-    /* Auth */
     .auth-box { text-align:center; padding:20px; }
     input { padding:12px; border-radius:25px; border:none; margin:5px; width:90%; max-width:300px; font-size:16px; }
     button { padding:10px 16px; border-radius:25px; border:none; cursor:pointer; font-weight:bold; margin:5px; background:#FF914D; color:white; font-size:16px; }
     button:hover { opacity:0.9; }
 
-    /* Chat selection */
-    .chat-selection { display:none; max-width:500px; margin:auto; padding:20px; }
-    .chatItem { display:flex; align-items:center; padding:12px; background:#FFF9F2; border-radius:15px; margin:8px 0; cursor:pointer; box-shadow:0 2px 4px rgba(0,0,0,0.2); transition:0.2s; }
-    .chatItem:hover { background:#FFE6CC; }
-    .chatItem img { width:50px; height:50px; border-radius:50%; margin-right:12px; border:2px solid #FF914D; }
-    .chatItem .name { font-weight:bold; flex:1; font-size:16px; }
-    .online-dot { width:12px; height:12px; background:#4CAF50; border-radius:50%; margin-left:5px; }
-
-    /* Chat box */
-    .chat-box { display:none; max-width:600px; margin:auto; height:80vh; display:flex; flex-direction:column; }
+    .chat-box { max-width:600px; margin:auto; height:85vh; display:flex; flex-direction:column; }
     .chat-header { background:#FF6F61; color:white; padding:12px; display:flex; align-items:center; border-radius:0 0 15px 15px; flex-shrink:0; }
     .chat-header img { width:45px; height:45px; border-radius:50%; margin-right:12px; border:2px solid #FFF; }
     .chat-header .title { flex:1; font-weight:bold; font-size:16px; }
@@ -38,7 +28,6 @@
     .likeBtn { background:#FF914D; color:white; border-radius:15px; padding:4px 10px; margin-left:4px; font-size:12px; }
     .deleteBtn { background:#FF3B3B; color:white; border-radius:15px; padding:4px 10px; margin-left:4px; font-size:12px; }
 
-    /* Input box */
     .input-box { display:flex; margin-top:10px; padding:10px; background:#FFF3E6; border-top:1px solid #FFC49B; flex-shrink:0; }
     .input-box input { flex:1; padding:12px; border-radius:25px; border:none; font-size:16px; }
     .input-box button { margin-left:5px; padding:12px 16px; font-size:16px; border-radius:25px; }
@@ -61,38 +50,19 @@
   <button onclick="login()">Login</button>
 </div>
 
-<div class="chat-selection" id="chatSelection">
-  <p id="welcome"></p>
-  <button onclick="logout()">Logout</button><br><br>
-
-  <input type="text" id="groupName" placeholder="New group name">
-  <button onclick="createGroup()">Create Group</button><br><br>
-
-  <input type="text" id="friendEmail" placeholder="Friend's email">
-  <button onclick="startPrivateChat()">Start Private Chat</button>
-
-  <h3>Groups</h3>
-  <div id="groupList"></div>
-
-  <h3>Private Chats</h3>
-  <div id="privateList"></div>
-</div>
-
-<div class="chat-box" id="chatBox">
+<div class="chat-box" id="chatBox" style="display:none;">
   <div class="chat-header">
     <img src="https://i.pravatar.cc/45" alt="avatar">
-    <div class="title" id="chatTitle"></div>
+    <div class="title" id="chatTitle">General Group</div>
   </div>
   <div class="messages" id="posts"></div>
 
   <div class="input-box">
     <input type="text" id="messageInput" placeholder="Type a message">
     <button onclick="sendMessage()">Send</button>
-    <button onclick="backToSelection()">Back</button>
   </div>
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
@@ -111,112 +81,68 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const authBox=document.getElementById("authBox");
-const chatSelection=document.getElementById("chatSelection");
-const chatBox=document.getElementById("chatBox");
-const postsDiv=document.getElementById("posts");
-const welcome=document.getElementById("welcome");
-const chatTitle=document.getElementById("chatTitle");
-const groupList=document.getElementById("groupList");
-const privateList=document.getElementById("privateList");
+const authBox = document.getElementById("authBox");
+const chatBox = document.getElementById("chatBox");
+const postsDiv = document.getElementById("posts");
+const chatTitle = document.getElementById("chatTitle");
+const messageInput = document.getElementById("messageInput");
 
-let currentChatId=null;
-let currentChatType=null;
+let currentChatId = "general_group";
+let currentChatType = "group";
 
 // AUTH
-function signUp(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value; auth.createUserWithEmailAndPassword(email,password).catch(e=>alert(e.message)); }
-function login(){ const email=document.getElementById("email").value; const password=document.getElementById("password").value; auth.signInWithEmailAndPassword(email,password).catch(e=>alert(e.message)); }
-function logout(){ auth.signOut(); currentChatId=null; currentChatType=null; }
+function signUp(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  auth.createUserWithEmailAndPassword(email,password).catch(e=>alert(e.message));
+}
+function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  auth.signInWithEmailAndPassword(email,password).catch(e=>alert(e.message));
+}
 
 // AUTH STATE
 auth.onAuthStateChanged(user=>{
   if(user){
     authBox.style.display="none";
-    chatSelection.style.display="block";
+    chatBox.style.display="flex";
+
+    // Ensure General group exists
+    db.collection("group_chats").doc(currentChatId).set({name:"General", members:[]}, {merge:true});
+    loadMessages("group", currentChatId);
+  } else {
+    authBox.style.display="block";
     chatBox.style.display="none";
-    welcome.innerText="Logged in as: "+user.email.split("@")[0];
-    loadGroupList();
-    loadPrivateList();
-  } else { authBox.style.display="block"; chatSelection.style.display="none"; chatBox.style.display="none"; }
+  }
 });
-
-// PRIVATE CHAT
-function startPrivateChat(){
-  const user=auth.currentUser;
-  const friendEmail=document.getElementById("friendEmail").value.trim().toLowerCase();
-  if(!friendEmail) return alert("Enter friend's email!");
-  const users=[user.email,friendEmail].sort();
-  const chatId=btoa(users.join("_"));
-
-  db.collection("private_chats").doc(chatId).set({ users }, { merge:true }).then(()=>{
-    currentChatId = chatId;
-    currentChatType = "private";
-    openChat(currentChatId, currentChatType, "Private: " + friendEmail.split("@")[0]);
-  });
-}
-
-// GROUP
-function createGroup(){
-  const groupName=document.getElementById("groupName").value.trim();
-  if(!groupName) return alert("Enter group name");
-
-  db.collection("group_chats").add({
-    name:groupName,
-    members:[auth.currentUser.uid]
-  }).then(docRef=>{
-    currentChatId = docRef.id;
-    currentChatType = "group";
-    openChat(currentChatId, currentChatType, groupName);
-  });
-
-  document.getElementById("groupName").value="";
-}
-
-// BACK
-function backToSelection(){
-  chatBox.style.display="none";
-  chatSelection.style.display="block";
-  currentChatId=null;
-  currentChatType=null;
-}
-
-// OPEN CHAT
-function openChat(chatId,type,title){
-  chatBox.style.display="flex";
-  chatSelection.style.display="none";
-  chatTitle.innerText=title;
-  postsDiv.innerHTML="";
-  loadMessages(type,chatId);
-}
 
 // SEND MESSAGE
 function sendMessage(){
-  const user=auth.currentUser;
-  const message=document.getElementById("messageInput").value.trim();
+  const user = auth.currentUser;
+  const message = messageInput.value.trim();
   if(!message) return;
-  if(!currentChatId || !currentChatType) return alert("Select a chat first!");
 
-  let collectionRef;
-  if(currentChatType==="private") collectionRef=db.collection("private_chats").doc(currentChatId).collection("messages");
-  else collectionRef=db.collection("group_chats").doc(currentChatId).collection("messages");
+  const collectionRef = db.collection("group_chats").doc(currentChatId).collection("messages");
 
   collectionRef.add({
-    uid:user.uid,
-    email:user.email,
-    message:message,
-    timestamp:Date.now(),
-    likes:0,
-    reactions:{"❤️":0,"😂":0,"😮":0}
-  }).then(()=>{ document.getElementById("messageInput").value=""; });
+    uid: user.uid,
+    email: user.email,
+    message: message,
+    timestamp: Date.now(),
+    likes: 0,
+    reactions: {"❤️":0,"😂":0,"😮":0}
+  });
+
+  messageInput.value = "";
 }
 
 // LOAD MESSAGES
-function loadMessages(type,id){
-  const user=auth.currentUser;
-  let collectionRef=type==="private"? db.collection("private_chats").doc(id).collection("messages") :
-                                           db.collection("group_chats").doc(id).collection("messages");
+function loadMessages(type, id){
+  const user = auth.currentUser;
+  const collectionRef = db.collection("group_chats").doc(id).collection("messages").orderBy("timestamp");
 
-  collectionRef.orderBy("timestamp").onSnapshot(snapshot=>{
+  collectionRef.onSnapshot(snapshot=>{
     postsDiv.innerHTML="";
     snapshot.forEach(doc=>{
       const post=doc.data();
@@ -235,64 +161,30 @@ function loadMessages(type,id){
         const del=document.createElement("button");
         del.innerText="Delete";
         del.className="deleteBtn";
-        del.onclick=()=>collectionRef.doc(doc.id).delete();
+        del.onclick=()=>db.collection("group_chats").doc(id).collection("messages").doc(doc.id).delete();
         bubble.appendChild(del);
       }
       postsDiv.appendChild(bubble);
       postsDiv.scrollTop=postsDiv.scrollHeight;
 
       // Like & Emoji
-      bubble.querySelector(".likeBtn").addEventListener("click",()=>collectionRef.doc(doc.id).update({likes:post.likes+1}));
+      bubble.querySelector(".likeBtn").addEventListener("click",()=>db.collection("group_chats").doc(id).collection("messages").doc(doc.id).update({likes:post.likes+1}));
       bubble.querySelectorAll(".emojiBtn").forEach(btn=>{
         btn.addEventListener("click",()=>{
           const emoji=btn.textContent.trim().split(" ")[0];
           const updated={...post.reactions};
           updated[emoji]=post.reactions[emoji]+1;
-          collectionRef.doc(doc.id).update({reactions:updated});
+          db.collection("group_chats").doc(id).collection("messages").doc(doc.id).update({reactions:updated});
         });
       });
     });
   });
 }
 
-// LOAD GROUPS
-function loadGroupList(){
-  db.collection("group_chats").onSnapshot(snapshot=>{
-    groupList.innerHTML="";
-    snapshot.forEach(doc=>{
-      const group=doc.data();
-      const div=document.createElement("div");
-      div.className="chatItem";
-      div.innerHTML=`<img src="https://i.pravatar.cc/50?u=${doc.id}"><span class="name">${group.name}</span>`;
-      div.onclick=()=>openChat(doc.id,"group",group.name);
-      groupList.appendChild(div);
-    });
-  });
-}
-
-// LOAD PRIVATE
-function loadPrivateList(){
-  const user=auth.currentUser;
-  db.collection("private_chats").onSnapshot(snapshot=>{
-    privateList.innerHTML="";
-    snapshot.forEach(doc=>{
-      const usersInChat=atob(doc.id).split("_");
-      const friendEmail=usersInChat.find(e=>e!==user.email);
-      if(friendEmail){
-        const div=document.createElement("div");
-        div.className="chatItem";
-        div.innerHTML=`<img src="https://i.pravatar.cc/50?u=${friendEmail}"><span class="name">${friendEmail.split("@")[0]}</span>`;
-        div.onclick=()=>openChat(doc.id,"private","Private: "+friendEmail.split("@")[0]);
-        privateList.appendChild(div);
-      }
-    });
-  });
-}
-
-document.getElementById("messageInput").addEventListener("keypress",e=>{
+messageInput.addEventListener("keypress", e=>{
   if(e.key==="Enter") sendMessage();
 });
 </script>
 
 </body>
-      </html>
+</html>
