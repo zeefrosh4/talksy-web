@@ -78,7 +78,7 @@
   <div class="input-box">
     <input type="text" id="messageInput" placeholder="Type a message">
     <button onclick="sendMessage()">Send</button>
-    <button onclick="backToSelection()">Chats</button>
+    <button onclick="goGeneralGroup()">Back</button>
   </div>
 </div>
 
@@ -130,6 +130,7 @@ auth.onAuthStateChanged(user=>{
 
     loadMessages("group","general_group");
     loadPrivateList();
+    history.pushState(null,null,location.href);
   } else {
     authBox.style.display="block";
     chatSelection.style.display="none";
@@ -223,16 +224,21 @@ function startPrivateChat(){
   const chatId = btoa(users.join("_"));
 
   db.collection("private_chats").doc(chatId).set({users},{merge:true}).then(()=>{
-    currentChatId = chatId;
-    currentChatType = "private";
-    chatTitle.innerText = "Private: " + friendEmail.split("@")[0];
-    postsDiv.innerHTML="";
-    chatSelection.style.display="none";
-    chatBox.style.display="flex";
-    loadMessages("private", chatId);
+    openPrivateChat(chatId, friendEmail);
   });
 
   document.getElementById("friendEmail").value="";
+}
+
+function openPrivateChat(chatId, friendEmail){
+  currentChatId = chatId;
+  currentChatType = "private";
+  chatTitle.innerText = "Private: " + friendEmail.split("@")[0];
+  postsDiv.innerHTML="";
+  chatSelection.style.display = "none";
+  chatBox.style.display = "flex";
+  loadMessages("private", chatId);
+  history.pushState(null,null,location.href);
 }
 
 // LOAD PRIVATE LIST
@@ -247,25 +253,29 @@ function loadPrivateList(){
         const div = document.createElement("div");
         div.className = "chatItem";
         div.innerHTML=`<img src="https://i.pravatar.cc/50?u=${friendEmail}"><span class="name">${friendEmail.split("@")[0]}</span>`;
-        div.onclick=()=>{
-          currentChatId = doc.id;
-          currentChatType = "private";
-          chatTitle.innerText = "Private: " + friendEmail.split("@")[0];
-          postsDiv.innerHTML="";
-          chatSelection.style.display="none";
-          chatBox.style.display="flex";
-          loadMessages("private", doc.id);
-        };
+        div.onclick=()=> openPrivateChat(doc.id, friendEmail);
         privateList.appendChild(div);
       }
     });
   });
 }
 
-function backToSelection(){
-  chatBox.style.display="none";
-  chatSelection.style.display="block";
+// GO BACK TO GENERAL GROUP
+function goGeneralGroup(){
+  currentChatId = "general_group";
+  currentChatType = "group";
+  chatTitle.innerText = "General Group";
+  postsDiv.innerHTML="";
+  loadMessages("group","general_group");
 }
+
+// HANDLE BACK BUTTON
+window.onpopstate = function(){
+  if(currentChatType==="private"){
+    goGeneralGroup();
+    history.pushState(null,null,location.href);
+  }
+};
 
 messageInput.addEventListener("keypress", e=>{
   if(e.key==="Enter") sendMessage();
@@ -273,4 +283,4 @@ messageInput.addEventListener("keypress", e=>{
 </script>
 
 </body>
-  </html>
+</html>
