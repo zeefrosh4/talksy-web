@@ -1,65 +1,48 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Talksy Mini Chat</title>
+  <title>Talksy Private Chat</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: linear-gradient(to right, #ffecd2, #fcb69f);
-      padding: 20px;
-      margin: 0;
+      margin:0; padding:20px;
     }
 
-    h1 { text-align: center; }
+    h1 { text-align:center; }
 
-    input {
-      padding: 10px;
-      margin: 5px 0;
-      border-radius: 8px;
-      border: none;
-      width: 250px;
+    input, select {
+      padding:10px; margin:5px 0; border-radius:8px; border:none; width:250px;
     }
 
     button {
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-weight: bold;
-      margin: 3px;
+      padding:8px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:bold; margin:3px;
     }
 
-    .auth-box {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    .chat-box {
-      display: none;
-    }
+    .auth-box, .chat-box { text-align:center; }
+    .chat-box { display:none; }
 
     .post {
-      background: white;
-      padding: 12px;
-      border-radius: 12px;
-      margin: 10px 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      padding:12px;
+      margin:10px 0;
+      border-radius:12px;
+      box-shadow:0 2px 6px rgba(0,0,0,0.2);
+      background:white;
+      word-wrap:break-word;
+      position:relative;
     }
 
-    .deleteBtn {
-      background: #ff4b5c;
-      color: white;
-    }
-
-    .logoutBtn {
-      background: #333;
-      color: white;
-    }
+    .deleteBtn { background:#ff4b5c; color:white; margin-left:5px; }
+    .logoutBtn { background:#333; color:white; }
+    .likeBtn { background:#4D96FF; color:white; margin-left:5px; }
+    .emojiBtn { background:none; border:none; font-size:18px; cursor:pointer; margin-left:4px; }
+    .emojiBtn:hover { transform:scale(1.2); }
+    .likeCount, .reactionCount { font-weight:bold; margin-left:2px; }
   </style>
 </head>
 <body>
 
-<h1>Talksy Mini Chat</h1>
+<h1>Talksy Private Chat</h1>
 
 <div class="auth-box" id="authBox">
   <input type="email" id="email" placeholder="Email"><br>
@@ -70,8 +53,10 @@
 
 <div class="chat-box" id="chatBox">
   <p id="welcome"></p>
-  <button class="logoutBtn" onclick="logout()">Logout</button>
-  <br><br>
+  <button class="logoutBtn" onclick="logout()">Logout</button><br><br>
+
+  <input type="text" id="friendEmail" placeholder="Friend's email"><br>
+  <button onclick="startChat()">Start Chat</button><br><br>
 
   <input type="text" id="messageInput" placeholder="Type message">
   <button onclick="sendMessage()">Send</button>
@@ -95,7 +80,6 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-
 const auth = firebase.auth();
 const db = firebase.firestore();
 
@@ -104,98 +88,140 @@ const chatBox = document.getElementById("chatBox");
 const postsDiv = document.getElementById("posts");
 const welcome = document.getElementById("welcome");
 
+let chatId = null; // current private chat ID
 
 // SIGN UP
 function signUp() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-
-  auth.createUserWithEmailAndPassword(email, password)
-    .catch(error => alert(error.message));
+  auth.createUserWithEmailAndPassword(email, password).catch(e => alert(e.message));
 }
 
 // LOGIN
 function login() {
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
-
-  auth.signInWithEmailAndPassword(email, password)
-    .catch(error => alert(error.message));
+  auth.signInWithEmailAndPassword(email, password).catch(e => alert(e.message));
 }
 
 // LOGOUT
-function logout() {
-  auth.signOut();
-}
+function logout() { auth.signOut(); chatId=null; }
 
-// AUTH STATE LISTENER
+// AUTH STATE
 auth.onAuthStateChanged(user => {
-  if (user) {
-    authBox.style.display = "none";
-    chatBox.style.display = "block";
-    welcome.innerText = "Logged in as: " + user.email;
-    loadMessages(user);
+  if(user){
+    authBox.style.display="none";
+    chatBox.style.display="block";
+    welcome.innerText = "Logged in as: " + user.email.split("@")[0];
+    postsDiv.innerHTML = "";
   } else {
-    authBox.style.display = "block";
-    chatBox.style.display = "none";
+    authBox.style.display="block";
+    chatBox.style.display="none";
     postsDiv.innerHTML = "";
   }
 });
 
+// START CHAT
+function startChat() {
+  const user = auth.currentUser;
+  const friendEmail = document.getElementById("friendEmail").value.trim().toLowerCase();
+  if(!friendEmail) return alert("Enter your friend's email!");
+
+  // Create unique chatId using both UIDs (alphabetical)
+  const users = [user.email, friendEmail].sort();
+  chatId = btoa(users.join("_")); // base64 encode for safe ID
+
+  loadMessages();
+}
 
 // SEND MESSAGE
 function sendMessage() {
   const user = auth.currentUser;
   const message = document.getElementById("messageInput").value;
+  if(!message) return;
+  if(!chatId) return alert("Start chat with a friend first!");
 
-  if (!message) return;
+  db.collection("private_chats")
+    .doc(chatId)
+    .collection("messages")
+    .add({
+      uid: user.uid,
+      email: user.email,
+      message: message,
+      timestamp: Date.now(),
+      likes: 0,
+      reactions: { "❤️":0, "😂":0, "😮":0 }
+    });
 
-  db.collection("posts").add({
-    uid: user.uid,
-    email: user.email,
-    message: message,
-    timestamp: Date.now()
-  });
-
-  document.getElementById("messageInput").value = "";
+  document.getElementById("messageInput").value="";
 }
 
-
 // LOAD MESSAGES
-function loadMessages(user) {
-  db.collection("posts")
+function loadMessages() {
+  if(!chatId) return;
+
+  db.collection("private_chats")
+    .doc(chatId)
+    .collection("messages")
     .orderBy("timestamp")
-    .onSnapshot(snapshot => {
-      postsDiv.innerHTML = "";
-
-      snapshot.forEach(doc => {
+    .onSnapshot(snapshot=>{
+      postsDiv.innerHTML="";
+      snapshot.forEach(doc=>{
         const post = doc.data();
-
         const postDiv = document.createElement("div");
-        postDiv.className = "post";
+        postDiv.className="post";
 
-        const displayName = post.email.split('@')[0]; // Take only the part before @
-postDiv.innerHTML = `
-  <strong>${displayName}</strong><br>
-  ${post.message}
-`;
+        const displayName = post.email.split("@")[0];
+        postDiv.innerHTML = `
+          <strong>${displayName}</strong><br>
+          ${post.message}<br>
+          <button class="likeBtn">Like ❤️</button>
+          <span class="likeCount">${post.likes}</span>
+          <span>Reactions:</span>
+          <button class="emojiBtn">❤️ ${post.reactions["❤️"]}</button>
+          <button class="emojiBtn">😂 ${post.reactions["😂"]}</button>
+          <button class="emojiBtn">😮 ${post.reactions["😮"]}</button>
+        `;
 
-        // Only show delete if owner
-        if (post.uid === user.uid) {
+        // Delete only for owner
+        if(post.uid===auth.currentUser.uid){
           const deleteBtn = document.createElement("button");
-          deleteBtn.innerText = "Delete";
-          deleteBtn.className = "deleteBtn";
-          deleteBtn.onclick = () => {
-            db.collection("posts").doc(doc.id).delete();
-          };
+          deleteBtn.innerText="Delete";
+          deleteBtn.className="deleteBtn";
+          deleteBtn.onclick=()=>db.collection("private_chats").doc(chatId)
+                                    .collection("messages").doc(doc.id).delete();
           postDiv.appendChild(deleteBtn);
         }
 
         postsDiv.appendChild(postDiv);
+
+        // Like button
+        const likeBtn = postDiv.querySelector(".likeBtn");
+        likeBtn.addEventListener("click", ()=>{
+          db.collection("private_chats").doc(chatId)
+            .collection("messages").doc(doc.id)
+            .update({ likes: post.likes+1 });
+        });
+
+        // Emoji buttons
+        const emojiBtns = postDiv.querySelectorAll(".emojiBtn");
+        emojiBtns.forEach(btn=>{
+          btn.addEventListener("click", ()=>{
+            const emoji = btn.textContent.trim().split(" ")[0];
+            const updated = {...post.reactions};
+            updated[emoji] = post.reactions[emoji]+1;
+            db.collection("private_chats").doc(chatId)
+              .collection("messages").doc(doc.id)
+              .update({ reactions: updated });
+          });
+        });
       });
     });
 }
-</script>
 
+document.getElementById("messageInput").addEventListener("keypress", e=>{
+  if(e.key==="Enter") sendMessage();
+});
+</script>
 </body>
 </html>
