@@ -84,14 +84,10 @@
 
 <script>
 const firebaseConfig = {
-    apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
-    authDomain: "talksy-mini.firebaseapp.com",
-    databaseURL: "https://talksy-mini-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "talksy-mini",
-    storageBucket: "talksy-mini.firebasestorage.app",
-    messagingSenderId: "1044754891732",
-    appId: "1:1044754891732:web:9b933f3d18a17e246a8c41"
-  };
+  apiKey: "YOUR_KEY",
+  authDomain: "YOUR_DOMAIN",
+  projectId: "YOUR_PROJECT_ID"
+};
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
@@ -109,7 +105,6 @@ const typingDiv = document.getElementById("typing");
 const authBox = document.getElementById("authBox");
 const appDiv = document.getElementById("app");
 
-/* ---------- AUTH ---------- */
 function signUp(){
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -122,7 +117,7 @@ function login(){
 }
 function googleLogin(){
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithRedirect(provider); // <- redirect method
+  auth.signInWithPopup(provider).catch(e=>alert(e.message));
 }
 function logout(){
   auth.signOut();
@@ -132,20 +127,6 @@ function logout(){
   appDiv.style.display="none";
 }
 
-/* ---------- HANDLE REDIRECT RESULT ---------- */
-auth.getRedirectResult()
-  .then((result)=>{
-    if(result.user){
-      authBox.style.display="none";
-      appDiv.style.display="flex";
-      loadChats();
-    }
-  })
-  .catch((error)=>{
-    console.error(error.message);
-    alert("Google sign-in failed: "+error.message);
-  });
-
 auth.onAuthStateChanged(user=>{
   if(user){
     authBox.style.display="none";
@@ -154,7 +135,6 @@ auth.onAuthStateChanged(user=>{
   }
 });
 
-/* ---------- CHAT SYSTEM ---------- */
 function loadChats(){
   chatList.innerHTML="";
   addChatItem("General Group","group","general");
@@ -218,6 +198,7 @@ function loadMessages(){
     });
 }
 
+// Send message + typing
 document.getElementById("messageInput").addEventListener("input",()=>{
   if(!currentChat) return;
   db.collection(currentType==="group"?"groups":"private").doc(currentChat)
