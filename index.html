@@ -85,8 +85,8 @@
 <script>
 const firebaseConfig = {
   apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
+  authDomain: "talksy-mini.firebaseapp.com",
+  projectId: "talksy-mini"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -105,6 +105,7 @@ const typingDiv = document.getElementById("typing");
 const authBox = document.getElementById("authBox");
 const appDiv = document.getElementById("app");
 
+/* ---------- AUTH ---------- */
 function signUp(){
   const email = document.getElementById("email").value;
   const password = document.getElementById("password").value;
@@ -117,7 +118,7 @@ function login(){
 }
 function googleLogin(){
   const provider = new firebase.auth.GoogleAuthProvider();
-  auth.signInWithPopup(provider).catch(e=>alert(e.message));
+  auth.signInWithRedirect(provider); // <- redirect method
 }
 function logout(){
   auth.signOut();
@@ -127,6 +128,20 @@ function logout(){
   appDiv.style.display="none";
 }
 
+/* ---------- HANDLE REDIRECT RESULT ---------- */
+auth.getRedirectResult()
+  .then((result)=>{
+    if(result.user){
+      authBox.style.display="none";
+      appDiv.style.display="flex";
+      loadChats();
+    }
+  })
+  .catch((error)=>{
+    console.error(error.message);
+    alert("Google sign-in failed: "+error.message);
+  });
+
 auth.onAuthStateChanged(user=>{
   if(user){
     authBox.style.display="none";
@@ -135,6 +150,7 @@ auth.onAuthStateChanged(user=>{
   }
 });
 
+/* ---------- CHAT SYSTEM ---------- */
 function loadChats(){
   chatList.innerHTML="";
   addChatItem("General Group","group","general");
@@ -198,7 +214,6 @@ function loadMessages(){
     });
 }
 
-// Send message + typing
 document.getElementById("messageInput").addEventListener("input",()=>{
   if(!currentChat) return;
   db.collection(currentType==="group"?"groups":"private").doc(currentChat)
@@ -240,4 +255,4 @@ function showSidebar(){ document.getElementById("sidebar").classList.remove("hid
 </script>
 
 </body>
-        </html>
+</html>
