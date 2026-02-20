@@ -35,6 +35,13 @@ body, html { margin:0; padding:0; font-family: Arial; height:100%; background:#e
 /* Back button */
 #backBtn { display:none; padding:5px 10px; background:#1e90ff; color:white; border:none; border-radius:5px; cursor:pointer; margin-right:10px; }
 #backBtn:hover { background:#00bfff; }
+
+/* Login UI */
+#login { position:absolute; top:0; left:0; right:0; bottom:0; background:#e0f7ff; display:flex; justify-content:center; align-items:center; }
+#loginBox { background:#f0f8ff; padding:20px; border-radius:10px; text-align:center; width:300px; }
+#loginBox input { width:100%; padding:10px; margin:5px 0; }
+#loginBox button { width:100%; padding:10px; margin:5px 0; border:none; border-radius:5px; background:#00bfff; color:white; cursor:pointer; }
+#loginBox button:hover { background:#1e90ff; }
 </style>
 </head>
 <body>
@@ -65,13 +72,13 @@ body, html { margin:0; padding:0; font-family: Arial; height:100%; background:#e
 </div>
 
 <!-- Login UI -->
-<div id="login" style="position:absolute; top:0; left:0; right:0; bottom:0; background:#e0f7ff; display:flex; justify-content:center; align-items:center;">
-  <div style="background:#f0f8ff; padding:20px; border-radius:10px; text-align:center; width:300px;">
+<div id="login">
+  <div id="loginBox">
     <h2>Login / Sign Up</h2>
-    <input type="email" id="email" placeholder="Email" style="width:100%; padding:10px; margin:5px 0;">
-    <input type="password" id="password" placeholder="Password" style="width:100%; padding:10px; margin:5px 0;">
-    <button id="loginBtn" style="width:100%; margin:5px 0;">Login</button>
-    <button id="signupBtn" style="width:100%; margin:5px 0;">Sign Up</button>
+    <input type="email" id="email" placeholder="Email">
+    <input type="password" id="password" placeholder="Password">
+    <button id="loginBtn">Login</button>
+    <button id="signupBtn">Sign Up</button>
   </div>
 </div>
 
@@ -97,7 +104,7 @@ const auth = getAuth(app);
 let currentUser = null;
 let currentChatId = null;
 
-// Login & SignUp
+// --- Login & SignUp ---
 document.getElementById('loginBtn').addEventListener('click', async () => {
   try {
     const userCred = await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
@@ -123,7 +130,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   document.getElementById('login').style.display = 'flex';
 });
 
-// Back button
+// --- Back button ---
 document.getElementById('backBtn').addEventListener('click', ()=>{
   currentChatId = null;
   document.getElementById('chatTitle').textContent = "Select a chat";
@@ -131,7 +138,7 @@ document.getElementById('backBtn').addEventListener('click', ()=>{
   document.getElementById('backBtn').style.display = 'none';
 });
 
-// Add new chat
+// --- Add new chat ---
 document.getElementById('newChatBtn').addEventListener('click', async () => {
   const chatName = document.getElementById('newChatInput').value.trim();
   if(!chatName) return;
@@ -141,7 +148,7 @@ document.getElementById('newChatBtn').addEventListener('click', async () => {
   loadChatList();
 });
 
-// Load chats in sidebar
+// --- Load chats in sidebar ---
 async function loadChatList() {
   const chatListDiv = document.getElementById('chatList');
   chatListDiv.innerHTML = '';
@@ -155,7 +162,7 @@ async function loadChatList() {
   });
 }
 
-// Open chat
+// --- Open chat ---
 function openChat(chatId, chatName) {
   currentChatId = chatId;
   document.getElementById('chatTitle').textContent = chatName;
@@ -163,7 +170,7 @@ function openChat(chatId, chatName) {
   loadMessages(chatId);
 }
 
-// Send message
+// --- Send message ---
 document.getElementById('sendBtn').addEventListener('click', async () => {
   const msgInput = document.getElementById('messageInput');
   const msg = msgInput.value.trim();
@@ -176,17 +183,19 @@ document.getElementById('sendBtn').addEventListener('click', async () => {
   msgInput.value = '';
 });
 
-// Load messages in real-time
+// --- Load messages in real-time ---
 function loadMessages(chatId) {
   const messagesDiv = document.getElementById('messages');
   messagesDiv.innerHTML = '';
-  const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt'));
+  const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('createdAt', 'asc'));
   onSnapshot(q, snapshot => {
     messagesDiv.innerHTML = '';
     snapshot.forEach(docSnap => {
       const data = docSnap.data();
       const div = document.createElement('div');
-      div.textContent = `${data.user}: ${data.text}`;
+      // Hide full email, only show nickname
+      const displayName = data.user.split('@')[0];
+      div.textContent = `${displayName}: ${data.text}`;
       div.classList.add('msg');
       div.classList.add(currentUser.email === data.user ? 'me' : 'other');
       messagesDiv.appendChild(div);
