@@ -2,53 +2,60 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Talksy</title>
+<title>Talksy Web</title>
 
 <style>
 body{
   margin:0;
   font-family: Arial, sans-serif;
-  background:#111b21;
+  background:#0b141a;
   color:white;
-}
-
-/* Screens */
-.screen{
-  width:100%;
+  display:flex;
   height:100vh;
-  display:none;
+}
+
+/* SIDEBAR */
+.sidebar{
+  width:30%;
+  background:#111b21;
+  display:flex;
   flex-direction:column;
+  border-right:1px solid #222e35;
 }
 
-.active{
-  display:flex;
-}
-
-/* Header */
-.header{
-  background:#202c33;
+.sidebar-header{
   padding:15px;
-  display:flex;
-  align-items:center;
+  background:#202c33;
+  font-weight:bold;
 }
 
-.header button{
-  background:none;
+.search{
+  padding:10px;
+  background:#111b21;
+}
+
+.search input{
+  width:100%;
+  padding:8px;
+  border-radius:20px;
   border:none;
+  background:#202c33;
   color:white;
-  font-size:18px;
-  margin-right:10px;
 }
 
-/* Chat list */
+.chat-list{
+  flex:1;
+  overflow-y:auto;
+}
+
 .chat-item{
   padding:15px;
-  border-bottom:1px solid #2a3942;
+  border-bottom:1px solid #222e35;
   cursor:pointer;
 }
 
 .chat-item:hover{
-  background:#2a3942;
+  background:#202c33;
 }
 
 .chat-name{
@@ -56,24 +63,48 @@ body{
 }
 
 .chat-last{
-  font-size:14px;
+  font-size:13px;
   color:#8696a0;
 }
 
-/* Messages */
-.messages{
-  flex:1;
-  padding:10px;
-  overflow-y:auto;
+/* CHAT AREA */
+.chat-area{
+  width:70%;
   display:flex;
   flex-direction:column;
 }
 
+.chat-header{
+  padding:15px;
+  background:#202c33;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.chat-header-left{
+  font-weight:bold;
+}
+
+.chat-header-icons span{
+  margin-left:15px;
+  cursor:pointer;
+}
+
+.messages{
+  flex:1;
+  padding:20px;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+  background:#0b141a;
+}
+
 .message{
-  max-width:70%;
+  max-width:60%;
   padding:10px;
-  margin:5px 0;
   border-radius:8px;
+  margin:5px 0;
   font-size:14px;
 }
 
@@ -88,9 +119,9 @@ body{
 }
 
 .input-area{
-  display:flex;
-  padding:10px;
+  padding:15px;
   background:#202c33;
+  display:flex;
 }
 
 .input-area input{
@@ -108,159 +139,80 @@ body{
   background:#00a884;
   color:white;
 }
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .sidebar{
+    width:40%;
+  }
+  .chat-area{
+    width:60%;
+  }
+}
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN SCREEN -->
-<div id="loginScreen" class="screen active">
-  <div style="padding:30px">
-    <h2>Login</h2>
-    <input id="email" placeholder="Email"><br><br>
-    <input id="password" type="password" placeholder="Password"><br><br>
-    <input id="username" placeholder="Choose Username"><br><br>
-    <button onclick="login()">Login / Sign Up</button>
+<div class="sidebar">
+  <div class="sidebar-header">Talksy Web</div>
+
+  <div class="search">
+    <input placeholder="Search or start new chat">
+  </div>
+
+  <div class="chat-list">
+    <div class="chat-item" onclick="selectChat('Emma Wilson')">
+      <div class="chat-name">Emma Wilson</div>
+      <div class="chat-last">Can we meet for coffee tomorrow?</div>
+    </div>
+
+    <div class="chat-item" onclick="selectChat('Michael Chen')">
+      <div class="chat-name">Michael Chen</div>
+      <div class="chat-last">Yes! It was amazing!</div>
+    </div>
   </div>
 </div>
 
-<!-- CHAT LIST SCREEN -->
-<div id="chatListScreen" class="screen">
-  <div class="header">
-    <h3>Talksy</h3>
+<div class="chat-area">
+  <div class="chat-header">
+    <div class="chat-header-left" id="chatTitle">
+      Select a chat
+    </div>
+    <div class="chat-header-icons">
+      <span>📞</span>
+      <span>📹</span>
+      <span>⋮</span>
+    </div>
   </div>
-  <div id="chatList"></div>
-</div>
 
-<!-- CHAT ROOM SCREEN -->
-<div id="chatScreen" class="screen">
-  <div class="header">
-    <button onclick="goBack()">←</button>
-    <span id="chatTitle"></span>
-  </div>
-  <div id="messages" class="messages"></div>
+  <div class="messages" id="messages"></div>
+
   <div class="input-area">
-    <input id="messageInput" placeholder="Message">
+    <input id="messageInput" placeholder="Type a message...">
     <button onclick="sendMessage()">Send</button>
   </div>
 </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, orderBy, onSnapshot, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+<script>
+let currentChat = null;
 
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-let currentUser;
-let currentChatId;
-
-/* SCREEN CONTROL */
-function showScreen(id){
-  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+function selectChat(name){
+  currentChat = name;
+  document.getElementById("chatTitle").innerText = name;
+  document.getElementById("messages").innerHTML = "";
 }
 
-/* LOGIN */
-window.login = async function(){
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-  const username = document.getElementById("username").value;
+function sendMessage(){
+  const input = document.getElementById("messageInput");
+  if(!input.value || !currentChat) return;
 
-  let userCredential;
-  try{
-    userCredential = await signInWithEmailAndPassword(auth,email,password);
-  }catch{
-    userCredential = await createUserWithEmailAndPassword(auth,email,password);
-  }
+  const div = document.createElement("div");
+  div.className="message me";
+  div.innerText = input.value;
 
-  currentUser = userCredential.user;
-
-  await setDoc(doc(db,"users",currentUser.uid),{
-    username: username
-  });
-
-  loadChats();
-  showScreen("chatListScreen");
-};
-
-/* LOAD CHAT LIST */
-async function loadChats(){
-  const chatListDiv = document.getElementById("chatList");
-  chatListDiv.innerHTML="";
-  const snapshot = await getDocs(collection(db,"chats"));
-  snapshot.forEach(docSnap=>{
-    const div = document.createElement("div");
-    div.className="chat-item";
-    div.innerHTML=`
-      <div class="chat-name">${docSnap.data().name}</div>
-      <div class="chat-last">${docSnap.data().lastMessage || ""}</div>
-    `;
-    div.onclick=()=>openChat(docSnap.id,docSnap.data().name);
-    chatListDiv.appendChild(div);
-  });
-}
-
-/* OPEN CHAT */
-window.openChat = function(chatId,name){
-  currentChatId = chatId;
-  document.getElementById("chatTitle").innerText=name;
-  showScreen("chatScreen");
-  history.pushState({chat:true},"");
-  loadMessages();
-};
-
-/* BACK */
-window.goBack = function(){
-  showScreen("chatListScreen");
-};
-
-window.onpopstate = function(){
-  goBack();
-};
-
-/* SEND MESSAGE */
-window.sendMessage = async function(){
-  const text = document.getElementById("messageInput").value;
-  if(!text) return;
-
-  await addDoc(collection(db,"chats",currentChatId,"messages"),{
-    text:text,
-    sender:currentUser.uid,
-    createdAt: new Date()
-  });
-
-  await setDoc(doc(db,"chats",currentChatId),{
-    lastMessage:text
-  },{merge:true});
-
-  document.getElementById("messageInput").value="";
-};
-
-/* LOAD MESSAGES */
-function loadMessages(){
-  const messagesDiv = document.getElementById("messages");
-  messagesDiv.innerHTML="";
-  const q = query(collection(db,"chats",currentChatId,"messages"), orderBy("createdAt"));
-  onSnapshot(q,snapshot=>{
-    messagesDiv.innerHTML="";
-    snapshot.forEach(docSnap=>{
-      const data = docSnap.data();
-      const div=document.createElement("div");
-      div.className="message "+(data.sender===currentUser.uid?"me":"other");
-      div.innerText=data.text;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop=messagesDiv.scrollHeight;
-    });
-  });
+  document.getElementById("messages").appendChild(div);
+  input.value="";
 }
 </script>
 
