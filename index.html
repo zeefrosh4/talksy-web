@@ -4,217 +4,196 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Talksy Web</title>
 
-<style>
-body{
-  margin:0;
-  font-family: Arial, sans-serif;
-  background:#0b141a;
-  color:white;
-  display:flex;
-  height:100vh;
-}
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
 
-/* SIDEBAR */
-.sidebar{
-  width:30%;
-  background:#111b21;
-  display:flex;
-  flex-direction:column;
-  border-right:1px solid #222e35;
-}
+// ----------------- FIREBASE CONFIG -----------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
+  authDomain: "talksy-mini.firebaseapp.com",
+  databaseURL: "https://talksy-mini-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "talksy-mini",
+  storageBucket: "talksy-mini.firebasestorage.app",
+  messagingSenderId: "1044754891732",
+  appId: "1:1044754891732:web:9b933f3d18a17e246a8c41"
+};
 
-.sidebar-header{
-  padding:15px;
-  background:#202c33;
-  font-weight:bold;
-}
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth(app);
 
-.search{
-  padding:10px;
-  background:#111b21;
-}
-
-.search input{
-  width:100%;
-  padding:8px;
-  border-radius:20px;
-  border:none;
-  background:#202c33;
-  color:white;
-}
-
-.chat-list{
-  flex:1;
-  overflow-y:auto;
-}
-
-.chat-item{
-  padding:15px;
-  border-bottom:1px solid #222e35;
-  cursor:pointer;
-}
-
-.chat-item:hover{
-  background:#202c33;
-}
-
-.chat-name{
-  font-weight:bold;
-}
-
-.chat-last{
-  font-size:13px;
-  color:#8696a0;
-}
-
-/* CHAT AREA */
-.chat-area{
-  width:70%;
-  display:flex;
-  flex-direction:column;
-}
-
-.chat-header{
-  padding:15px;
-  background:#202c33;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.chat-header-left{
-  font-weight:bold;
-}
-
-.chat-header-icons span{
-  margin-left:15px;
-  cursor:pointer;
-}
-
-.messages{
-  flex:1;
-  padding:20px;
-  overflow-y:auto;
-  display:flex;
-  flex-direction:column;
-  background:#0b141a;
-}
-
-.message{
-  max-width:60%;
-  padding:10px;
-  border-radius:8px;
-  margin:5px 0;
-  font-size:14px;
-}
-
-.me{
-  align-self:flex-end;
-  background:#005c4b;
-}
-
-.other{
-  align-self:flex-start;
-  background:#202c33;
-}
-
-.input-area{
-  padding:15px;
-  background:#202c33;
-  display:flex;
-}
-
-.input-area input{
-  flex:1;
-  padding:10px;
-  border-radius:20px;
-  border:none;
-}
-
-.input-area button{
-  margin-left:10px;
-  padding:10px 15px;
-  border:none;
-  border-radius:20px;
-  background:#00a884;
-  color:white;
-}
-
-/* RESPONSIVE */
-@media(max-width:900px){
-  .sidebar{
-    width:40%;
-  }
-  .chat-area{
-    width:60%;
-  }
-}
-</style>
-</head>
-
-<body>
-
-<div class="sidebar">
-  <div class="sidebar-header">Talksy Web</div>
-
-  <div class="search">
-    <input placeholder="Search or start new chat">
+// ----------------- DOM ELEMENTS -----------------
+const loginDiv = document.createElement("div");
+loginDiv.innerHTML = `
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f0f4f8;">
+    <h1 style="color:#3b82f6;">Talksy Web</h1>
+    <input id="email" placeholder="Email" style="padding:10px;margin:5px;border-radius:5px;border:1px solid #ccc;width:200px;">
+    <input id="password" type="password" placeholder="Password" style="padding:10px;margin:5px;border-radius:5px;border:1px solid #ccc;width:200px;">
+    <button id="loginBtn" style="padding:10px 20px;margin:5px;background:#3b82f6;color:white;border:none;border-radius:5px;cursor:pointer;">Login</button>
+    <button id="signupBtn" style="padding:10px 20px;margin:5px;background:#00a8ff;color:white;border:none;border-radius:5px;cursor:pointer;">Sign Up</button>
   </div>
+`;
+document.body.appendChild(loginDiv);
 
-  <div class="chat-list">
-    <div class="chat-item" onclick="selectChat('Emma Wilson')">
-      <div class="chat-name">Emma Wilson</div>
-      <div class="chat-last">Can we meet for coffee tomorrow?</div>
+// ----------------- APP UI -----------------
+const appDiv = document.createElement("div");
+appDiv.style.display="none";
+appDiv.innerHTML = `
+<div style="display:flex;height:100vh;font-family:Arial,sans-serif;background:#f4f7fb;color:#1e293b;">
+  <!-- Sidebar -->
+  <div style="width:30%;background:white;border-right:1px solid #e2e8f0;display:flex;flex-direction:column;">
+    <div style="padding:18px;font-size:20px;font-weight:bold;color:#3b82f6;">Talksy</div>
+    <input id="searchUser" placeholder="Search users..." style="padding:10px;margin:10px;border-radius:20px;border:1px solid #e2e8f0;">
+    <div id="userList" style="flex:1;overflow-y:auto;"></div>
+  </div>
+  
+  <!-- Chat area -->
+  <div style="width:70%;display:flex;flex-direction:column;">
+    <div style="padding:15px;background:white;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">
+      <div id="chatHeader" style="font-weight:bold;display:flex;align-items:center;"><img id="headerAvatar" src="" style="width:40px;height:40px;border-radius:50%;margin-right:10px;"> <span id="chatTitle">Select a chat</span></div>
+      <div><span id="callBtn" style="margin-left:15px;cursor:pointer;color:#3b82f6;">📞</span><span id="videoBtn" style="margin-left:15px;cursor:pointer;color:#3b82f6;">📹</span><span id="logoutBtn" style="margin-left:15px;cursor:pointer;color:#f87171;">🚪</span></div>
     </div>
-
-    <div class="chat-item" onclick="selectChat('Michael Chen')">
-      <div class="chat-name">Michael Chen</div>
-      <div class="chat-last">Yes! It was amazing!</div>
+    <div id="messages" style="flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;background:#f4f7fb;"></div>
+    <div style="padding:15px;background:white;border-top:1px solid #e2e8f0;display:flex;">
+      <input id="messageInput" placeholder="Type a message..." style="flex:1;padding:10px;border-radius:20px;border:1px solid #e2e8f0;">
+      <button id="sendBtn" style="margin-left:10px;padding:10px 15px;border:none;border-radius:50%;background:#3b82f6;color:white;font-size:16px;cursor:pointer;">➤</button>
     </div>
   </div>
 </div>
+`;
+// append but hidden
+document.body.appendChild(appDiv);
 
-<div class="chat-area">
-  <div class="chat-header">
-    <div class="chat-header-left" id="chatTitle">
-      Select a chat
-    </div>
-    <div class="chat-header-icons">
-      <span>📞</span>
-      <span>📹</span>
-      <span>⋮</span>
-    </div>
-  </div>
+// ----------------- AUTH HANDLERS -----------------
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const loginBtn = document.getElementById("loginBtn");
+const signupBtn = document.getElementById("signupBtn");
 
-  <div class="messages" id="messages"></div>
+loginBtn.onclick = ()=>{
+  signInWithEmailAndPassword(auth,emailInput.value,passwordInput.value)
+    .catch(e=>alert(e.message));
+};
 
-  <div class="input-area">
-    <input id="messageInput" placeholder="Type a message...">
-    <button onclick="sendMessage()">Send</button>
-  </div>
-</div>
+signupBtn.onclick = ()=>{
+  createUserWithEmailAndPassword(auth,emailInput.value,passwordInput.value)
+    .catch(e=>alert(e.message));
+};
 
-<script>
-let currentChat = null;
+// ----------------- APP LOGIC -----------------
+const userListDiv = document.getElementById("userList");
+const messagesDiv = document.getElementById("messages");
+const chatTitle = document.getElementById("chatTitle");
+const headerAvatar = document.getElementById("headerAvatar");
+const messageInput = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendBtn");
+const searchInput = document.getElementById("searchUser");
+const logoutBtn = document.getElementById("logoutBtn");
 
-function selectChat(name){
-  currentChat = name;
-  document.getElementById("chatTitle").innerText = name;
-  document.getElementById("messages").innerHTML = "";
+let currentUser=null;
+let currentChatId=null;
+
+onAuthStateChanged(auth,(user)=>{
+  if(user){
+    currentUser=user;
+    loginDiv.style.display="none";
+    appDiv.style.display="block";
+    loadUsers();
+  } else {
+    loginDiv.style.display="block";
+    appDiv.style.display="none";
+  }
+});
+
+logoutBtn.onclick = ()=>signOut(auth);
+
+// ----------------- LOAD USERS -----------------
+function loadUsers(){
+  const dbRef = ref(db,"users");
+  onValue(dbRef,(snapshot)=>{
+    const users = snapshot.val() || {};
+    userListDiv.innerHTML="";
+    Object.keys(users).forEach(uid=>{
+      if(uid===currentUser.uid) return; // skip self
+      const u = users[uid];
+      const div = document.createElement("div");
+      div.innerHTML=`
+      <div style="display:flex;align-items:center;padding:10px;cursor:pointer;" onclick="startChat('${uid}','${u.name}','${u.photo||'https://i.pravatar.cc/150?img=5'}',this)">
+        <img src="${u.photo||'https://i.pravatar.cc/150?img=5'}" style="width:40px;height:40px;border-radius:50%;margin-right:10px;">
+        <span>${u.name}</span>
+      </div>`;
+      userListDiv.appendChild(div);
+    });
+  });
 }
 
-function sendMessage(){
-  const input = document.getElementById("messageInput");
-  if(!input.value || !currentChat) return;
+// ----------------- START CHAT -----------------
+window.startChat=(uid,name,photo,element)=>{
+  document.querySelectorAll("#userList div").forEach(el=>el.style.background="");
+  element.style.background="#e0ecff";
+  
+  chatTitle.innerText=name;
+  headerAvatar.src=photo;
 
-  const div = document.createElement("div");
-  div.className="message me";
-  div.innerText = input.value;
+  currentChatId = [currentUser.uid,uid].sort().join("_"); // unique chat ID
 
-  document.getElementById("messages").appendChild(div);
-  input.value="";
-}
+  // Load messages
+  const chatRef = ref(db,"chats/"+currentChatId);
+  onValue(chatRef,(snapshot)=>{
+    messagesDiv.innerHTML="";
+    const msgs = snapshot.val() || {};
+    Object.keys(msgs).forEach(key=>{
+      const m = msgs[key];
+      const div = document.createElement("div");
+      div.style.margin="5px";
+      div.style.maxWidth="60%";
+      div.style.padding="10px";
+      div.style.borderRadius="12px";
+      div.style.position="relative";
+      div.style.fontSize="14px";
+      div.style.marginBottom="8px";
+      div.style.wordBreak="break-word";
+      if(m.sender===currentUser.uid){
+        div.style.alignSelf="flex-end";
+        div.style.background="linear-gradient(135deg,#4da6ff,#3b82f6)";
+        div.style.color="white";
+      } else {
+        div.style.alignSelf="flex-start";
+        div.style.background="white";
+        div.style.color="black";
+      }
+      div.innerHTML = m.text + `<div style="font-size:10px;margin-top:3px;opacity:0.7;text-align:right;">${m.time}</div>`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop=messagesDiv.scrollHeight;
+    });
+  });
+};
+
+// ----------------- SEND MESSAGE -----------------
+sendBtn.onclick = ()=>{
+  if(!messageInput.value || !currentChatId) return;
+  const chatRef = ref(db,"chats/"+currentChatId);
+  push(chatRef,{
+    sender: currentUser.uid,
+    text: messageInput.value,
+    time: new Date().getHours()+":"+String(new Date().getMinutes()).padStart(2,"0")
+  });
+  messageInput.value="";
+};
+
+// ----------------- REGISTER USER IN DB -----------------
+onAuthStateChanged(auth,(user)=>{
+  if(user){
+    set(ref(db,"users/"+user.uid),{
+      name: user.email.split("@")[0],
+      email: user.email,
+      photo: "https://i.pravatar.cc/150?img=5"
+    });
+  }
+});
 </script>
 
-</body>
 </html>
