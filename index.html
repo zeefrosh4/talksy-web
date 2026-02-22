@@ -1,221 +1,206 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Talksy Web</title>
+<style>
+body {margin:0;font-family:Arial;background:#f0f2f5;}
+.screen{display:flex;height:100vh;}
+.hidden{display:none;}
+#login-screen{justify-content:center;align-items:center;flex-direction:column;width:100%;}
+#login-screen button{padding:10px 20px;margin:5px;background:#3b82f6;color:white;border:none;border-radius:5px;cursor:pointer;}
+#chat-screen{width:100%;display:flex;}
+.sidebar{width:30%;background:white;border-right:1px solid #ccc;display:flex;flex-direction:column;}
+.sidebar h2{padding:15px;margin:0;color:#3b82f6;}
+#search-user{margin:0 15px 10px 15px;padding:8px;border-radius:20px;border:1px solid #ccc;}
+#user-list{list-style:none;padding:0;margin:0;flex:1;overflow-y:auto;}
+#user-list li{padding:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #f0f0f0;}
+#user-list li:hover{background:#f0f2f5;}
+.chat-area{width:70%;display:flex;flex-direction:column;}
+.chat-header{display:flex;align-items:center;justify-content:space-between;padding:10px;background:#3b82f6;color:white;}
+.chat-header img{width:40px;height:40px;border-radius:50%;margin-right:10px;}
+.chat-header .chat-info{display:flex;align-items:center;}
+.chat-actions button{background:none;border:none;color:white;font-size:20px;margin-left:5px;cursor:pointer;}
+#messages{flex:1;padding:20px;overflow-y:auto;display:flex;flex-direction:column;}
+.message{padding:10px;margin:5px;max-width:60%;border-radius:10px;position:relative;}
+.sent{background:linear-gradient(135deg,#4da6ff,#3b82f6);color:white;align-self:flex-end;}
+.received{background:white;color:black;align-self:flex-start;}
+.message-time{font-size:10px;opacity:0.7;text-align:right;}
+.chat-input{display:flex;padding:10px;background:#f0f2f5;}
+.chat-input input{flex:1;padding:10px;border-radius:20px;border:1px solid #ccc;}
+.chat-input button{margin-left:5px;border:none;background:#3b82f6;color:white;padding:0 15px;border-radius:50%;font-size:18px;cursor:pointer;}
+.unread-badge{background:#3b82f6;color:white;border-radius:50%;padding:2px 6px;font-size:12px;}
+.status-dot{width:10px;height:10px;border-radius:50%;border:2px solid white;display:inline-block;margin-left:5px;}
+</style>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-import { 
-  getDatabase, ref, push, onValue, set, get, onDisconnect, update 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
-import { 
-  getAuth, signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  onAuthStateChanged, signOut 
-} from "https://www.gstatic.com/firebasejs/9.22.0/firebase-auth.js";
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+</head>
+<body>
 
+<div id="login-screen" class="screen">
+  <h1>Talksy Web</h1>
+  <button id="login-btn">Sign in with Google</button>
+</div>
+
+<div id="chat-screen" class="screen hidden">
+  <div class="sidebar">
+    <h2>Chats</h2>
+    <input type="text" id="search-user" placeholder="Search users...">
+    <ul id="user-list"></ul>
+  </div>
+
+  <div class="chat-area">
+    <div class="chat-header">
+      <div class="chat-info">
+        <img id="chat-profile" src="https://i.pravatar.cc/150?img=5">
+        <span id="chat-name">Select a user</span>
+      </div>
+      <div class="chat-actions">
+        <button id="video-btn">📹</button>
+        <button id="call-btn">📞</button>
+      </div>
+    </div>
+    <div id="messages"></div>
+    <div class="chat-input">
+      <input type="text" id="message-input" placeholder="Type a message...">
+      <button id="send-btn">➡️</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
   authDomain: "talksy-mini.firebaseapp.com",
   databaseURL: "https://talksy-mini-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "talksy-mini",
-  storageBucket: "talksy-mini.firebasestorage.app",
+  storageBucket: "talksy-mini.appspot.com",
   messagingSenderId: "1044754891732",
   appId: "1:1044754891732:web:9b933f3d18a17e246a8c41"
 };
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.database();
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
+// Elements
+const loginScreen = document.getElementById('login-screen');
+const chatScreen = document.getElementById('chat-screen');
+const loginBtn = document.getElementById('login-btn');
+const userListEl = document.getElementById('user-list');
+const searchUser = document.getElementById('search-user');
+const chatName = document.getElementById('chat-name');
+const messagesEl = document.getElementById('messages');
+const messageInput = document.getElementById('message-input');
+const sendBtn = document.getElementById('send-btn');
+const chatProfile = document.getElementById('chat-profile');
 
 let currentUser = null;
-let currentChatId = null;
+let selectedUser = null;
 let unreadCounts = {};
 
-// ---------------- LOGIN UI ----------------
-document.body.innerHTML = `
-<div id="login" style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#f4f7fb;">
-<h1 style="color:#3b82f6;">Talksy</h1>
-<input id="email" placeholder="Email" style="padding:10px;margin:5px;">
-<input id="password" type="password" placeholder="Password" style="padding:10px;margin:5px;">
-<button id="loginBtn">Login</button>
-<button id="signupBtn">Sign Up</button>
-</div>
-
-<div id="app" style="display:none;height:100vh;font-family:Arial;">
-<div style="display:flex;height:100%;">
-  
-  <div style="width:30%;background:white;border-right:1px solid #ddd;display:flex;flex-direction:column;">
-    <div style="padding:15px;font-weight:bold;color:#3b82f6;">Talksy</div>
-    <div id="userList" style="flex:1;overflow-y:auto;"></div>
-  </div>
-
-  <div style="width:70%;display:flex;flex-direction:column;">
-    <div style="padding:15px;background:white;border-bottom:1px solid #ddd;display:flex;justify-content:space-between;">
-      <div id="chatTitle">Select chat</div>
-      <div>
-        <span id="logout" style="cursor:pointer;color:red;">Logout</span>
-      </div>
-    </div>
-    <div id="messages" style="flex:1;padding:20px;overflow-y:auto;background:#f4f7fb;display:flex;flex-direction:column;"></div>
-    <div style="padding:15px;background:white;display:flex;">
-      <input id="messageInput" style="flex:1;padding:10px;">
-      <button id="sendBtn">Send</button>
-    </div>
-  </div>
-
-</div>
-</div>
-`;
-
-// ---------------- AUTH ----------------
-document.getElementById("loginBtn").onclick = ()=>{
-  signInWithEmailAndPassword(auth,
-    email.value,password.value
-  ).catch(e=>alert(e.message));
+// Login
+loginBtn.onclick = ()=>{
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider);
 };
 
-document.getElementById("signupBtn").onclick = ()=>{
-  createUserWithEmailAndPassword(auth,
-    email.value,password.value
-  ).catch(e=>alert(e.message));
-};
-
-document.getElementById("logout").onclick = ()=>signOut(auth);
-
-onAuthStateChanged(auth,(user)=>{
+// Auth state
+auth.onAuthStateChanged(user=>{
   if(user){
     currentUser = user;
-    document.getElementById("login").style.display="none";
-    document.getElementById("app").style.display="block";
+    loginScreen.classList.add('hidden');
+    chatScreen.classList.remove('hidden');
     setupPresence();
     loadUsers();
   } else {
-    document.getElementById("login").style.display="flex";
-    document.getElementById("app").style.display="none";
+    loginScreen.classList.remove('hidden');
+    chatScreen.classList.add('hidden');
   }
 });
 
-// ---------------- ONLINE STATUS ----------------
+// Presence system
 function setupPresence(){
-  const userRef = ref(db,"users/"+currentUser.uid);
-
-  const userData = {
-    name: currentUser.email.split("@")[0],
+  const userRef = db.ref('users/' + currentUser.uid);
+  userRef.set({
+    name: currentUser.displayName,
     email: currentUser.email,
-    photo:"https://i.pravatar.cc/150?img=5",
-    status:"online",
-    lastSeen: Date.now()
-  };
-
-  set(userRef,userData);
-
-  onDisconnect(userRef).update({
-    status:"offline",
+    photo: currentUser.photoURL||'https://i.pravatar.cc/150?img=5',
+    status: 'online',
     lastSeen: Date.now()
   });
+  userRef.onDisconnect().update({status:'offline', lastSeen:Date.now()});
 }
 
-// ---------------- LOAD USERS ----------------
+// Load users
 function loadUsers(){
-  onValue(ref(db,"users"), snapshot=>{
+  db.ref('users').on('value', snapshot=>{
     const users = snapshot.val() || {};
-    const userList = document.getElementById("userList");
-    userList.innerHTML="";
-
+    userListEl.innerHTML = '';
     Object.keys(users).forEach(uid=>{
       if(uid===currentUser.uid) return;
-
       const u = users[uid];
-      const chatId = [currentUser.uid,uid].sort().join("_");
+      const chatId = [currentUser.uid, uid].sort().join("_");
       const unread = unreadCounts[chatId] || 0;
-
-      const div = document.createElement("div");
-      div.style.padding="10px";
-      div.style.cursor="pointer";
-      div.style.display="flex";
-      div.style.justifyContent="space-between";
-      div.onclick=()=>startChat(uid,u.name);
-
-      div.innerHTML=`
-      <div style="display:flex;align-items:center;">
-        <div style="position:relative;margin-right:10px;">
-          <img src="${u.photo}" style="width:40px;height:40px;border-radius:50%;">
-          <span style="
-            position:absolute;bottom:0;right:0;
-            width:10px;height:10px;border-radius:50%;
-            background:${u.status==="online"?"#22c55e":"#9ca3af"};
-            border:2px solid white;"></span>
-        </div>
-        <span>${u.name}</span>
-      </div>
-      ${unread>0?`<span style="background:#3b82f6;color:white;border-radius:50%;padding:4px 8px;font-size:12px;">${unread}</span>`:""}
-      `;
-
-      userList.appendChild(div);
-
-      monitorUnread(chatId,uid);
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${u.name}</span>
+                      <span>
+                        ${u.status==='online'?'<span class="status-dot" style="background:#22c55e"></span>':'<span class="status-dot" style="background:#9ca3af"></span>'}
+                        ${unread>0?'<span class="unread-badge">'+unread+'</span>':''}
+                      </span>`;
+      li.onclick = ()=>selectUser(uid,u.name,u.photo);
+      userListEl.appendChild(li);
     });
   });
 }
 
-// ---------------- START CHAT ----------------
-function startChat(uid,name){
-  currentChatId=[currentUser.uid,uid].sort().join("_");
-  document.getElementById("chatTitle").innerText=name;
-  unreadCounts[currentChatId]=0;
+// Select user
+function selectUser(uid,name,photo){
+  selectedUser = uid;
+  chatName.textContent = name;
+  chatProfile.src = photo;
+  unreadCounts[[currentUser.uid,uid].sort().join("_")] = 0;
   loadMessages();
 }
 
-// ---------------- LOAD MESSAGES ----------------
+// Load messages
 function loadMessages(){
-  const messagesDiv=document.getElementById("messages");
-  onValue(ref(db,"chats/"+currentChatId), snapshot=>{
-    messagesDiv.innerHTML="";
-    const msgs=snapshot.val()||{};
-    Object.values(msgs).forEach(m=>{
-      const div=document.createElement("div");
-      div.style.maxWidth="60%";
-      div.style.margin="5px";
-      div.style.padding="10px";
-      div.style.borderRadius="10px";
-      div.style.alignSelf=m.sender===currentUser.uid?"flex-end":"flex-start";
-      div.style.background=m.sender===currentUser.uid?
-        "linear-gradient(135deg,#4da6ff,#3b82f6)":"white";
-      div.style.color=m.sender===currentUser.uid?"white":"black";
-      div.innerHTML=m.text+`<div style="font-size:10px;opacity:0.7;text-align:right;">${m.time}</div>`;
-      messagesDiv.appendChild(div);
-      messagesDiv.scrollTop=messagesDiv.scrollHeight;
-    });
+  const chatId = [currentUser.uid, selectedUser].sort().join("_");
+  messagesEl.innerHTML = '';
+  db.ref('chats/' + chatId).on('child_added', snap=>{
+    const m = snap.val();
+    const div = document.createElement('div');
+    div.classList.add('message');
+    div.classList.add(m.sender===currentUser.uid?'sent':'received');
+    div.innerHTML = `${m.text}<div class="message-time">${new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>`;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
   });
-}
 
-// ---------------- SEND ----------------
-document.getElementById("sendBtn").onclick=()=>{
-  if(!currentChatId || !messageInput.value) return;
-  push(ref(db,"chats/"+currentChatId),{
-    sender:currentUser.uid,
-    text:messageInput.value,
-    time:new Date().getHours()+":"+String(new Date().getMinutes()).padStart(2,"0")
-  });
-  messageInput.value="";
-};
-
-// ---------------- UNREAD BADGE ----------------
-function monitorUnread(chatId,otherUid){
-  onValue(ref(db,"chats/"+chatId), snapshot=>{
-    const msgs=snapshot.val();
-    if(!msgs) return;
-
-    const lastMsg=Object.values(msgs).pop();
-    if(lastMsg && lastMsg.sender!==currentUser.uid && chatId!==currentChatId){
-      unreadCounts[chatId]=(unreadCounts[chatId]||0)+1;
+  // Unread count monitoring
+  db.ref('chats/' + chatId).on('child_added', snap=>{
+    const lastMsg = snap.val();
+    if(lastMsg.sender!==currentUser.uid && chatId!==[currentUser.uid,selectedUser].sort().join("_")){
+      unreadCounts[chatId] = (unreadCounts[chatId]||0)+1;
       loadUsers();
     }
   });
 }
+
+// Send message
+sendBtn.onclick = ()=>{
+  if(!selectedUser) return alert('Select a user first');
+  const text = messageInput.value.trim();
+  if(!text) return;
+  const chatId = [currentUser.uid, selectedUser].sort().join("_");
+  const msgObj = {text, sender:currentUser.uid, timestamp:Date.now()};
+  db.ref('chats/'+chatId).push(msgObj);
+  messageInput.value = '';
+};
 </script>
-</head>
-<body></body>
+</body>
 </html>
