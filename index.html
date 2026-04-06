@@ -1,123 +1,77 @@
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithRedirect, 
-  getRedirectResult, 
-  onAuthStateChanged, 
-  signOut 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Talksy Web</title>
+</head>
 
-import { 
-  getDatabase, 
-  ref, 
-  push, 
-  onValue 
-} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<body style="background:#0f172a; color:white; text-align:center; padding-top:100px;">
 
+  <h1>Talksy Web 💬</h1>
+  <p>Real conversations. No phone number needed.</p>
 
-// 🔥 YOUR FIREBASE CONFIG
-const firebaseConfig = {
-  apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
-  authDomain: "talksy-mini.firebaseapp.com",
-  databaseURL: "https://talksy-mini-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "talksy-mini",
-  storageBucket: "talksy-mini.firebasestorage.app",
-  messagingSenderId: "1044754891732",
-  appId: "1:1044754891732:web:74d6c11362b52a056a8c41"
-};
+  <button onclick="login()" style="padding:12px 20px; font-size:16px; border:none; border-radius:10px; cursor:pointer;">
+    Continue with Google
+  </button>
 
+  <br><br>
 
-// 🔧 INIT
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-const db = getDatabase(app);
+  <button onclick="logout()">Logout</button>
 
-let currentUser = null;
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithRedirect,
+      getRedirectResult,
+      onAuthStateChanged,
+      signOut
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// 🔐 LOGIN (REDIRECT - WORKS ON PHONE)
-window.login = function () {
-  signInWithRedirect(auth, provider);
-};
+    // 🔥 YOUR FIREBASE CONFIG
+    const firebaseConfig = {
+      apiKey: "AIzaSyCK3dYhgPl-CWJ9JuiI2rVuuv00Q7Do9f4",
+      authDomain: "talksy-mini.firebaseapp.com",
+      projectId: "talksy-mini",
+      appId: "1:1044754891732:web:74d6c11362b52a056a8c41"
+    };
 
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-// 🔁 HANDLE REDIRECT RESULT
-getRedirectResult(auth)
-  .then((result) => {
-    if (result) {
-      console.log("Login success");
-    }
-  })
-  .catch((error) => {
-    console.log(error);
-    alert("Login failed");
-  });
+    // ✅ LOGIN
+    window.login = function () {
+      signInWithRedirect(auth, provider);
+    };
 
+    // ✅ AFTER REDIRECT
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result && result.user) {
+          alert("Welcome " + result.user.displayName);
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
 
-// 👤 USER STATE
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
+    // ✅ CHECK USER
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        console.log("Logged in:", user.displayName);
+      } else {
+        console.log("Not logged in");
+      }
+    });
 
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "flex";
-    document.getElementById("userName").innerText = user.displayName;
+    // ✅ LOGOUT
+    window.logout = function () {
+      signOut(auth);
+    };
+  </script>
 
-    loadMessages();
-  } else {
-    document.getElementById("login").style.display = "flex";
-    document.getElementById("chat").style.display = "none";
-  }
-});
-
-
-// 🚪 LOGOUT
-window.logout = function () {
-  signOut(auth);
-};
-
-
-// 📤 SEND MESSAGE
-window.sendMessage = function () {
-  const input = document.getElementById("msgInput");
-  const text = input.value;
-
-  if (!text) return;
-
-  push(ref(db, "messages"), {
-    name: currentUser.displayName,
-    text: text
-  });
-
-  input.value = "";
-};
-
-
-// 📥 LOAD MESSAGES (REAL-TIME)
-function loadMessages() {
-  const messagesRef = ref(db, "messages");
-
-  onValue(messagesRef, (snapshot) => {
-    const data = snapshot.val();
-    const messagesDiv = document.getElementById("messages");
-
-    messagesDiv.innerHTML = "";
-
-    if (!data) return;
-
-    for (let id in data) {
-      const msg = data[id];
-
-      const div = document.createElement("div");
-      div.className = "msg";
-      div.innerText = msg.name + ": " + msg.text;
-
-      messagesDiv.appendChild(div);
-    }
-  });
-}
-
-    </script>
+</body>
+</html>
